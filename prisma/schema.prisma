@@ -19,7 +19,7 @@ model User {
   email       String               @unique
   name        String?
   image       String?
-
+passwordHash  String?
   memberships OrganizationMember[]
 
   createdAt   DateTime             @default(now())
