@@ -1,0 +1,153 @@
+.invite-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: #f5f3ee;
+  color: #111;
+}
+
+.invite-card {
+  width: min(680px, 100%);
+  border: 1px solid #171717;
+  background: #faf9f6;
+  padding: 48px;
+  box-shadow: 12px 12px 0 #171717;
+}
+
+.invite-topline {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #d6d2ca;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.invite-eyebrow {
+  margin-top: 64px;
+  margin-bottom: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.invite-card h1 {
+  margin: 0;
+  max-width: 600px;
+  font-size: clamp(42px, 8vw, 76px);
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+  font-weight: 700;
+}
+
+.invite-card h1 span {
+  display: block;
+  color: #6d675e;
+}
+
+.invite-description {
+  max-width: 500px;
+  margin: 28px 0 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: #625d55;
+}
+
+.invite-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 44px;
+  border-top: 1px solid #d6d2ca;
+  border-bottom: 1px solid #d6d2ca;
+}
+
+.invite-details div {
+  padding: 20px 16px;
+  border-right: 1px solid #d6d2ca;
+}
+
+.invite-details div:last-child {
+  border-right: 0;
+}
+
+.invite-details span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #777067;
+}
+
+.invite-details strong {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.invite-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 36px;
+}
+
+.invite-button,
+.invite-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.invite-button {
+  background: #111;
+  color: #fff;
+  border: 1px solid #111;
+}
+
+.invite-secondary {
+  color: #111;
+  border: 1px solid #bbb5aa;
+}
+
+.invite-note {
+  margin: 24px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #777067;
+}
+
+@media (max-width: 640px) {
+  .invite-card {
+    padding: 28px 22px;
+    box-shadow: 7px 7px 0 #171717;
+  }
+
+  .invite-eyebrow {
+    margin-top: 42px;
+  }
+
+  .invite-details {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-details div {
+    border-right: 0;
+    border-bottom: 1px solid #d6d2ca;
+  }
+
+  .invite-details div:last-child {
+    border-bottom: 0;
+  }
+
+  .invite-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

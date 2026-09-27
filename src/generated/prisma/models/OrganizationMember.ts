@@ -409,10 +409,6 @@ export type OrganizationMemberUncheckedUpdateManyWithoutOrganizationNestedInput 
   deleteMany?: Prisma.OrganizationMemberScalarWhereInput | Prisma.OrganizationMemberScalarWhereInput[]
 }
 
-export type EnumRoleFieldUpdateOperationsInput = {
-  set?: $Enums.Role
-}
-
 export type OrganizationMemberCreateWithoutUserInput = {
   id?: string
   role?: $Enums.Role

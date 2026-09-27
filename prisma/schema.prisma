@@ -14,6 +14,37 @@ enum Role {
   MEMBER
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  email          String
+  role           Role             @default(MEMBER)
+  status         InvitationStatus @default(PENDING)
+
+  organizationId String
+  invitedById    String
+
+  tokenHash      String           @unique
+
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      User             @relation(fields: [invitedById], references: [id])
+
+  createdAt      DateTime         @default(now())
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
+}
+
 model User {
   id          String               @id @default(cuid())
   email       String               @unique
@@ -21,6 +52,7 @@ model User {
   image       String?
 passwordHash  String?
   memberships OrganizationMember[]
+  sentInvitations Invitation[]
 
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
@@ -32,6 +64,7 @@ model Organization {
   slug        String               @unique
 
   memberships OrganizationMember[]
+  invitations Invitation[]
 
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt

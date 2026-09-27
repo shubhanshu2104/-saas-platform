@@ -2,24 +2,25 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SignupPage() {
   const router = useRouter();
+  
 
-  const [loading, setLoading] = useState(false);
+ const callbackUrl = "/dashboard";
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setLoading(true);
     setError("");
-
-    const formData = new FormData(event.currentTarget);
-
-    const name = String(formData.get("name") ?? "");
-    const email = String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
+    setLoading(true);
 
     try {
       const response = await fetch("/api/signup", {
@@ -37,12 +38,13 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error ?? "Something went wrong");
+        setError(data.error ?? "Unable to create your account.");
         return;
       }
 
-      // Account created successfully
-      router.push("/login?created=true");
+      router.push(
+        `/login?created=true&callbackUrl=${encodeURIComponent(callbackUrl)}`
+      );
     } catch {
       setError("Unable to connect to the server. Please try again.");
     } finally {
@@ -51,162 +53,193 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f1ea] text-[#151515]">
-      <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[1.1fr_0.9fr]">
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "#f5f4ef",
+        padding: "24px",
+      }}
+    >
+      <section
+        style={{
+          width: "100%",
+          maxWidth: "460px",
+          background: "#fff",
+          border: "1px solid #deddd7",
+          padding: "40px",
+          boxShadow: "8px 8px 0 #111",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "11px",
+            letterSpacing: "2px",
+            fontWeight: 700,
+            marginBottom: "18px",
+          }}
+        >
+          SAAS PLATFORM / ACCOUNT
+        </div>
 
-        {/* LEFT SIDE */}
-        <section className="relative hidden overflow-hidden border-r border-black/10 p-12 lg:flex lg:flex-col lg:justify-between">
+        <h1
+          style={{
+            fontSize: "42px",
+            lineHeight: 1,
+            margin: "0 0 14px",
+            color: "#111",
+          }}
+        >
+          Create your account.
+        </h1>
 
-          <div className="flex items-center gap-3 text-sm font-medium tracking-[0.2em]">
-            <span className="h-2.5 w-2.5 rounded-full bg-black" />
-            SAAS PLATFORM
-          </div>
+        <p
+          style={{
+            color: "#666",
+            lineHeight: 1.6,
+            marginBottom: "30px",
+          }}
+        >
+          Start your workspace and invite your team when you're ready.
+        </p>
 
-          <div className="max-w-xl">
-            <p className="mb-6 text-xs font-semibold tracking-[0.3em] text-black/45">
-              WORKSPACE / 01
-            </p>
+        <form onSubmit={handleSubmit}>
+          <label style={{ display: "block", marginBottom: "18px" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 700,
+                marginBottom: "7px",
+              }}
+            >
+              NAME
+            </span>
 
-            <h1 className="text-6xl font-semibold leading-[0.9] tracking-[-0.06em] xl:text-8xl">
-              Build your
-              <br />
-              workspace.
-            </h1>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Your name"
+              required
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "13px",
+                border: "1px solid #ccc",
+                background: "#fafafa",
+              }}
+            />
+          </label>
 
-            <p className="mt-8 max-w-md text-base leading-7 text-black/55">
-              A focused workspace for teams, permissions,
-              usage and billing — designed around the way
-              modern SaaS actually works.
-            </p>
-          </div>
+          <label style={{ display: "block", marginBottom: "18px" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 700,
+                marginBottom: "7px",
+              }}
+            >
+              EMAIL
+            </span>
 
-          <div className="flex items-end justify-between text-xs tracking-[0.18em] text-black/40">
-            <span>MULTI-TENANT / RBAC / BILLING</span>
-            <span>v0.1</span>
-          </div>
-        </section>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              required
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "13px",
+                border: "1px solid #ccc",
+                background: "#fafafa",
+              }}
+            />
+          </label>
 
-        {/* RIGHT SIDE */}
-        <section className="flex items-center justify-center p-6 sm:p-10 lg:p-16">
-          <div className="w-full max-w-md">
+          <label style={{ display: "block", marginBottom: "20px" }}>
+            <span
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 700,
+                marginBottom: "7px",
+              }}
+            >
+              PASSWORD
+            </span>
 
-            <div className="mb-12">
-              <p className="mb-3 text-xs font-semibold tracking-[0.25em] text-black/40">
-                CREATE ACCOUNT
-              </p>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 8 characters"
+              minLength={8}
+              required
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "13px",
+                border: "1px solid #ccc",
+                background: "#fafafa",
+              }}
+            />
+          </label>
 
-              <h2 className="text-3xl font-semibold tracking-[-0.04em]">
-                Start your workspace.
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-black/50">
-                Your account automatically becomes the owner
-                of a new organization.
-              </p>
+          {error && (
+            <div
+              style={{
+                marginBottom: "18px",
+                padding: "12px",
+                border: "1px solid #d8aaa4",
+                background: "#fff5f3",
+                color: "#8d3025",
+                fontSize: "13px",
+              }}
+            >
+              {error}
             </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px",
+              border: "none",
+              background: "#111",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Creating account..." : "Create account →"}
+          </button>
+        </form>
 
-              {/* NAME */}
-              <div>
-                <label
-                  htmlFor="name"
-                  className="mb-2 block text-xs font-semibold tracking-[0.15em]"
-                >
-                  NAME
-                </label>
-
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  placeholder="Your name"
-                  className="w-full border-b border-black/20 bg-transparent px-0 py-3 text-base outline-none transition placeholder:text-black/25 focus:border-black"
-                />
-              </div>
-
-              {/* EMAIL */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-xs font-semibold tracking-[0.15em]"
-                >
-                  EMAIL
-                </label>
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  placeholder="you@company.com"
-                  className="w-full border-b border-black/20 bg-transparent px-0 py-3 text-base outline-none transition placeholder:text-black/25 focus:border-black"
-                />
-              </div>
-
-              {/* PASSWORD */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-xs font-semibold tracking-[0.15em]"
-                >
-                  PASSWORD
-                </label>
-
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  placeholder="At least 8 characters"
-                  className="w-full border-b border-black/20 bg-transparent px-0 py-3 text-base outline-none transition placeholder:text-black/25 focus:border-black"
-                />
-              </div>
-
-              {/* ERROR */}
-              {error && (
-                <div
-                  role="alert"
-                  className="border-l-2 border-red-600 bg-red-50 px-4 py-3 text-sm text-red-700"
-                >
-                  {error}
-                </div>
-              )}
-
-              {/* SUBMIT */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="group mt-4 flex w-full items-center justify-between border border-black bg-black px-5 py-4 text-sm font-semibold text-white transition hover:bg-transparent hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span>
-                  {loading ? "CREATING..." : "CREATE WORKSPACE"}
-                </span>
-
-                <span className="transition-transform group-hover:translate-x-1">
-                  →
-                </span>
-              </button>
-
-            </form>
-
-            <p className="mt-8 text-center text-sm text-black/45">
-              Already have an account?{" "}
-              <a
-                href="/login"
-                className="font-medium text-black underline underline-offset-4"
-              >
-                Sign in
-              </a>
-            </p>
-
-          </div>
-        </section>
-      </div>
+        <p
+          style={{
+            marginTop: "24px",
+            textAlign: "center",
+            fontSize: "13px",
+            color: "#666",
+          }}
+        >
+          Already have an account?{" "}
+          <Link
+            href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            style={{ color: "#111", fontWeight: 700 }}
+          >
+            Log in
+          </Link>
+        </p>
+      </section>
     </main>
   );
 }
