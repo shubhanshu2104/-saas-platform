@@ -21,24 +21,37 @@ enum InvitationStatus {
   REVOKED
 }
 
+enum Plan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
 model Invitation {
-  id             String           @id @default(cuid())
-  email          String
-  role           Role             @default(MEMBER)
-  status         InvitationStatus @default(PENDING)
+  id     String           @id @default(cuid())
+  email  String
+  role   Role             @default(MEMBER)
+  status InvitationStatus @default(PENDING)
 
   organizationId String
   invitedById    String
 
-  tokenHash      String           @unique
+  tokenHash String @unique
 
-  expiresAt      DateTime
-  acceptedAt     DateTime?
+  expiresAt  DateTime
+  acceptedAt DateTime?
 
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invitedBy      User             @relation(fields: [invitedById], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedById], references: [id])
 
-  createdAt      DateTime         @default(now())
+  createdAt DateTime @default(now())
 
   @@index([organizationId])
   @@index([email])
@@ -46,41 +59,63 @@ model Invitation {
 }
 
 model User {
-  id          String               @id @default(cuid())
-  email       String               @unique
-  name        String?
-  image       String?
-passwordHash  String?
-  memberships OrganizationMember[]
+  id              String               @id @default(cuid())
+  email           String               @unique
+  name            String?
+  image           String?
+  passwordHash    String?
+  memberships     OrganizationMember[]
   sentInvitations Invitation[]
 
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Organization {
-  id          String               @id @default(cuid())
-  name        String
-  slug        String               @unique
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
 
-  memberships OrganizationMember[]
-  invitations Invitation[]
+  memberships  OrganizationMember[]
+  invitations  Invitation[]
+  subscription Subscription?
 
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model OrganizationMember {
-  id             String       @id @default(cuid())
+  id             String @id @default(cuid())
   userId         String
   organizationId String
-  role           Role         @default(MEMBER)
+  role           Role   @default(MEMBER)
 
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime     @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+}
+
+model Subscription {
+  id             String             @id @default(cuid())
+  organizationId String             @unique
+  plan           Plan               @default(FREE)
+  status         SubscriptionStatus @default(ACTIVE)
+
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([plan])
 }

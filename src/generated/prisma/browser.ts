@@ -37,3 +37,8 @@ export type Organization = Prisma.OrganizationModel
  * 
  */
 export type OrganizationMember = Prisma.OrganizationMemberModel
+/**
+ * Model Subscription
+ * 
+ */
+export type Subscription = Prisma.SubscriptionModel
