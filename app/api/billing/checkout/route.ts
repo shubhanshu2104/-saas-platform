@@ -1,31 +1,56 @@
 import { NextResponse } from "next/server";
 import { getCurrentMembership } from "@/lib/tenant";
+import { getRazorpayPlanId } from "@/lib/razorpay-plans";
+import { razorpay } from "@/lib/razorpay";
 
 const allowedPlans = ["PRO", "TEAM"] as const;
 
 export async function POST(request: Request) {
-  const membership = await getCurrentMembership();
+  try {
+    const membership = await getCurrentMembership();
 
-  if (!membership) {
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const requestedPlan = String(body.plan ?? "").toUpperCase();
+
+    if (
+      !allowedPlans.includes(
+        requestedPlan as (typeof allowedPlans)[number]
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid plan" },
+        { status: 400 }
+      );
+    }
+
+    const planId = getRazorpayPlanId(
+      requestedPlan as (typeof allowedPlans)[number]
+    );
+
+    const subscription = await razorpay.subscriptions.create({
+      plan_id: planId,
+      total_count: 12,
+    });
+
+    return NextResponse.json({
+      success: true,
+      plan: requestedPlan,
+      organizationId: membership.organizationId,
+      subscriptionId: subscription.id,
+    });
+  } catch (error) {
+    console.error("Razorpay checkout error:", error);
+
     return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
+      { error: "Unable to create checkout subscription" },
+      { status: 500 }
     );
   }
-
-  const body = await request.json();
-  const requestedPlan = String(body.plan ?? "").toUpperCase();
-
-  if (!allowedPlans.includes(requestedPlan as (typeof allowedPlans)[number])) {
-    return NextResponse.json(
-      { error: "Invalid plan" },
-      { status: 400 }
-    );
-  }
-
-  return NextResponse.json({
-    success: true,
-    plan: requestedPlan,
-    organizationId: membership.organizationId,
-  });
 }
