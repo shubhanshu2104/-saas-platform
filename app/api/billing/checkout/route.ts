@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentMembership } from "@/lib/tenant";
 import { getRazorpayPlanId } from "@/lib/razorpay-plans";
 import { razorpay } from "@/lib/razorpay";
+import { prisma } from "@/lib/prisma";
 
 const allowedPlans = ["PRO", "TEAM"] as const;
 
@@ -38,6 +39,15 @@ export async function POST(request: Request) {
       plan_id: planId,
       total_count: 12,
     });
+    await prisma.subscription.update({
+  where: {
+    organizationId: membership.organizationId,
+  },
+ data: {
+  plan: requestedPlan as "PRO" | "TEAM",
+  razorpaySubscriptionId: subscription.id,
+},
+});
 
     return NextResponse.json({
       success: true,
