@@ -1,3 +1,4 @@
+import { getCurrentSubscription } from "@/lib/subscription";
 import { sendInvitationEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -31,6 +32,43 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
+    const subscription = await getCurrentSubscription();
+
+if (!subscription) {
+  return NextResponse.json(
+    { error: "Subscription not found." },
+    { status: 500 }
+  );
+}
+
+const memberCount = await prisma.organizationMember.count({
+  where: {
+    organizationId: membership.organizationId,
+  },
+});
+
+const pendingInvitationCount =
+  await prisma.invitation.count({
+    where: {
+      organizationId: membership.organizationId,
+      status: "PENDING",
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+  });
+
+const totalSeatsUsed =
+  memberCount + pendingInvitationCount;
+
+if (totalSeatsUsed >= subscription.config.maxMembers) {
+  return NextResponse.json(
+    {
+      error: `Your ${subscription.config.name} plan allows a maximum of ${subscription.config.maxMembers} team members.`,
+    },
+    { status: 403 }
+  );
+}
 
     // 3. Validate request body
     const body = await request.json();
