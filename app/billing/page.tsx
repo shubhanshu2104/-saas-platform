@@ -1,5 +1,6 @@
 import { getCurrentSubscription } from "@/lib/subscription";
 import { getCurrentMembership } from "@/lib/tenant";
+import { getCurrentUsage } from "@/lib/usage";
 import { redirect } from "next/navigation";
 
 export default async function BillingPage() {
@@ -12,6 +13,12 @@ export default async function BillingPage() {
   const subscription = await getCurrentSubscription();
 
   if (!subscription) {
+    redirect("/dashboard");
+  }
+
+  const usage = await getCurrentUsage();
+
+  if (!usage) {
     redirect("/dashboard");
   }
 
@@ -77,6 +84,52 @@ export default async function BillingPage() {
               </p>
             </div>
 
+          </div>
+        </section>
+
+        {/* USAGE */}
+        <section className="border-b border-black/10 py-10">
+          <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.15em] text-black/40">
+                MONTHLY USAGE
+              </p>
+
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">
+                {usage.used.toLocaleString("en-IN")}
+                <span className="ml-2 text-base font-normal text-black/40">
+                  / {usage.limit.toLocaleString("en-IN")} units
+                </span>
+              </h2>
+
+              <p className="mt-2 text-sm text-black/50">
+                {usage.remaining.toLocaleString("en-IN")} units remaining
+                this billing period.
+              </p>
+            </div>
+
+            <p className="text-sm font-semibold text-black/50">
+              {usage.percentage}% used
+            </p>
+          </div>
+
+          <div className="mt-6 h-2 w-full overflow-hidden bg-black/10">
+            <div
+              className="h-full bg-black transition-all"
+              style={{
+                width: `${usage.percentage}%`,
+              }}
+            />
+          </div>
+
+          <div className="mt-4 flex justify-between text-xs text-black/40">
+            <span>
+              {usage.periodStart.toLocaleDateString("en-IN")}
+            </span>
+
+            <span>
+              {usage.periodEnd.toLocaleDateString("en-IN")}
+            </span>
           </div>
         </section>
 
