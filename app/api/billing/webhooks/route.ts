@@ -29,10 +29,12 @@ export async function POST(request: Request) {
     .update(body)
     .digest("hex");
 
-  const signaturesMatch = crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+ const signatureBuffer = Buffer.from(signature);
+const expectedSignatureBuffer = Buffer.from(expectedSignature);
+
+const signaturesMatch =
+  signatureBuffer.length === expectedSignatureBuffer.length &&
+  crypto.timingSafeEqual(signatureBuffer, expectedSignatureBuffer);
 
   if (!signaturesMatch) {
     return NextResponse.json(
