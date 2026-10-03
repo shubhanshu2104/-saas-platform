@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 type RazorpayWebhook = {
+  id?: string;
   event?: string;
   payload?: {
     subscription?: {
@@ -83,7 +84,31 @@ export async function POST(request: Request) {
       );
     }
 
+    const eventId = event.id;
     const eventName = event.event;
+
+    if (!eventId || !eventName) {
+      return NextResponse.json(
+        { error: "Invalid webhook event" },
+        { status: 400 }
+      );
+    }
+
+    const existingEvent =
+      await prisma.razorpayWebhookEvent.findUnique({
+        where: {
+          eventId,
+        },
+      });
+
+    if (existingEvent) {
+      console.log(
+        "Razorpay webhook already processed:",
+        eventId
+      );
+
+      return NextResponse.json({ received: true });
+    }
 
     console.log("Razorpay webhook received:", eventName);
 
@@ -93,21 +118,35 @@ export async function POST(request: Request) {
     const razorpaySubscriptionId = subscription?.id;
 
     if (!razorpaySubscriptionId) {
+      await prisma.razorpayWebhookEvent.create({
+        data: {
+          eventId,
+          eventType: eventName,
+        },
+      });
+
       return NextResponse.json({ received: true });
     }
 
-   const existingSubscription =
-  await prisma.subscription.findFirst({
-    where: {
-      razorpaySubscriptionId,
-    },
-  });
+    const existingSubscription =
+      await prisma.subscription.findFirst({
+        where: {
+          razorpaySubscriptionId,
+        },
+      });
 
     if (!existingSubscription) {
       console.warn(
         "Nexora subscription not found:",
         razorpaySubscriptionId
       );
+
+      await prisma.razorpayWebhookEvent.create({
+        data: {
+          eventId,
+          eventType: eventName,
+        },
+      });
 
       return NextResponse.json({ received: true });
     }
@@ -189,9 +228,19 @@ export async function POST(request: Request) {
         );
     }
 
+    await prisma.razorpayWebhookEvent.create({
+      data: {
+        eventId,
+        eventType: eventName,
+      },
+    });
+
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Razorpay webhook processing error:", error);
+    console.error(
+      "Razorpay webhook processing error:",
+      error
+    );
 
     return NextResponse.json(
       { error: "Webhook processing failed" },
