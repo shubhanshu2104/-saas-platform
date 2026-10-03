@@ -79,6 +79,7 @@ model Organization {
   memberships  OrganizationMember[]
   invitations  Invitation[]
   subscription Subscription?
+  usageRecords UsageRecord[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,3 +120,29 @@ model Subscription {
   @@index([status])
   @@index([plan])
 }
+
+model UsageRecord {
+  id             String   @id @default(cuid())
+  organizationId String
+
+  units          Int      @default(1)
+  periodStart    DateTime
+  periodEnd      DateTime
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, periodStart, periodEnd])
+}
+
+model RazorpayWebhookEvent {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  eventType String
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
+}
+

@@ -42,3 +42,13 @@ export type OrganizationMember = Prisma.OrganizationMemberModel
  * 
  */
 export type Subscription = Prisma.SubscriptionModel
+/**
+ * Model UsageRecord
+ * 
+ */
+export type UsageRecord = Prisma.UsageRecordModel
+/**
+ * Model RazorpayWebhookEvent
+ * 
+ */
+export type RazorpayWebhookEvent = Prisma.RazorpayWebhookEventModel
