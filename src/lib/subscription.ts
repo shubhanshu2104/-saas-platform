@@ -26,8 +26,15 @@ export async function getCurrentSubscription() {
     });
   }
 
+  const effectivePlan =
+    subscription.status === "CANCELLED" ||
+    subscription.status === "EXPIRED"
+      ? "FREE"
+      : subscription.plan;
+
   return {
     ...subscription,
-    config: PLAN_CONFIG[subscription.plan],
+    effectivePlan,
+    config: PLAN_CONFIG[effectivePlan],
   };
 }
