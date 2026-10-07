@@ -1,3 +1,5 @@
+import OrganizationSwitcher from "@/components/OrganizationSwitcher";
+import { getCurrentUserOrganizations } from "@/lib/tenant";
 import BillingLink from "@/components/BillingLink";
 import { getCurrentSubscription } from "@/lib/subscription";
 import { getCurrentMembership } from "@/lib/tenant";
@@ -9,6 +11,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ upgrade?: string }>;
 }) {
   const membership = await getCurrentMembership();
+  const organizations = await getCurrentUserOrganizations();
 const { upgrade } = await searchParams;
 const requestedPlan =
   upgrade === "pro" || upgrade === "team" ? upgrade : null;
@@ -25,35 +28,37 @@ const requestedPlan =
       <div className="mx-auto max-w-7xl p-6 sm:p-10 lg:p-12">
 
         {/* HEADER */}
-        <header className="flex items-center justify-between border-b border-black/10 pb-6">
-          <div className="flex items-center gap-6">
-  <div className="text-right">
-    <p className="text-xs tracking-[0.15em] text-black/40">
-      ROLE
-    </p>
+      {/* HEADER */}
+<header className="flex flex-col gap-6 border-b border-black/10 pb-6 sm:flex-row sm:items-center sm:justify-between">
 
-    <p className="mt-1 text-sm font-semibold">
-      {role}
-    </p>
+  {/* WORKSPACE */}
+  <OrganizationSwitcher
+    organizations={organizations.map((item) => ({
+      id: item.organization.id,
+      name: item.organization.name,
+    }))}
+    activeOrganizationId={membership.organizationId}
+  />
+
+  {/* RIGHT SIDE */}
+  <div className="flex items-center gap-6">
+    <div className="text-right">
+      <p className="text-xs tracking-[0.15em] text-black/40">
+        ROLE
+      </p>
+
+      <p className="mt-1 text-sm font-semibold">
+        {role}
+      </p>
+    </div>
+
+    <BillingLink
+      label="BILLING"
+      className="border border-black/15 bg-white px-4 py-2 text-xs hover:border-black/40"
+    />
   </div>
 
- <BillingLink
-  label="BILLING"
-  className="border border-black/15 bg-white px-4 py-2 text-xs hover:border-black/40"
-/>
-</div>
-
-          <div className="text-right">
-            <p className="text-xs tracking-[0.15em] text-black/40">
-              ROLE
-            </p>
-
-            <p className="mt-1 text-sm font-semibold">
-              {role}
-            </p>
-          </div>
-        </header>
-
+</header>
         {/* MAIN INTRO */}
         <section className="py-16">
           <p className="text-xs font-semibold tracking-[0.25em] text-black/40">

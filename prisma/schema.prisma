@@ -59,11 +59,15 @@ model Invitation {
 }
 
 model User {
-  id              String               @id @default(cuid())
-  email           String               @unique
-  name            String?
-  image           String?
-  passwordHash    String?
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String?
+  image        String?
+  passwordHash String?
+
+  activeOrganizationId String?
+  activeOrganization   Organization? @relation("UserActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+
   memberships     OrganizationMember[]
   sentInvitations Invitation[]
 
@@ -80,6 +84,8 @@ model Organization {
   invitations  Invitation[]
   subscription Subscription?
   usageRecords UsageRecord[]
+
+  activeUsers User[] @relation("UserActiveOrganization")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -122,12 +128,12 @@ model Subscription {
 }
 
 model UsageRecord {
-  id             String   @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
 
-  units          Int      @default(1)
-  periodStart    DateTime
-  periodEnd      DateTime
+  units       Int      @default(1)
+  periodStart DateTime
+  periodEnd   DateTime
 
   createdAt DateTime @default(now())
 
@@ -145,4 +151,3 @@ model RazorpayWebhookEvent {
 
   @@index([eventType])
 }
-
