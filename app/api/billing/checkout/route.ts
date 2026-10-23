@@ -44,7 +44,6 @@ export async function POST(request: Request) {
     organizationId: membership.organizationId,
   },
  data: {
-  plan: requestedPlan as "PRO" | "TEAM",
   razorpaySubscriptionId: subscription.id,
 },
 });

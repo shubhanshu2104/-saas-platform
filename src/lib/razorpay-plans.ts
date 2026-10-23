@@ -14,3 +14,17 @@ export function getRazorpayPlanId(plan: Plan) {
 
   return planId;
 }
+
+export function getPlanFromRazorpayPlanId(
+  razorpayPlanId: string
+): Plan | null {
+  for (const [plan, planId] of Object.entries(
+    razorpayPlanIds
+  )) {
+    if (planId === razorpayPlanId) {
+      return plan as Plan;
+    }
+  }
+
+  return null;
+}

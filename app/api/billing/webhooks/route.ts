@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { getPlanFromRazorpayPlanId } from "@/lib/razorpay-plans";
 
 type RazorpayWebhook = {
   id?: string;
@@ -11,6 +12,7 @@ type RazorpayWebhook = {
       entity?: {
         id?: string;
         customer_id?: string;
+        plan_id?: string;
         current_start?: number;
         current_end?: number;
         status?: string;
@@ -31,7 +33,9 @@ export async function POST(request: Request) {
   try {
     const body = await request.text();
 
-    const signature = request.headers.get("x-razorpay-signature");
+    const signature = request.headers.get(
+      "x-razorpay-signature"
+    );
 
     if (!signature) {
       return NextResponse.json(
@@ -40,10 +44,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const webhookSecret =
+      process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error("RAZORPAY_WEBHOOK_SECRET is missing");
+      console.error(
+        "RAZORPAY_WEBHOOK_SECRET is missing"
+      );
 
       return NextResponse.json(
         { error: "Webhook configuration missing" },
@@ -57,10 +64,13 @@ export async function POST(request: Request) {
       .digest("hex");
 
     const signatureBuffer = Buffer.from(signature);
-    const expectedSignatureBuffer = Buffer.from(expectedSignature);
+    const expectedSignatureBuffer = Buffer.from(
+      expectedSignature
+    );
 
     const signaturesMatch =
-      signatureBuffer.length === expectedSignatureBuffer.length &&
+      signatureBuffer.length ===
+        expectedSignatureBuffer.length &&
       crypto.timingSafeEqual(
         signatureBuffer,
         expectedSignatureBuffer
@@ -107,15 +117,21 @@ export async function POST(request: Request) {
         eventId
       );
 
-      return NextResponse.json({ received: true });
+      return NextResponse.json({
+        received: true,
+      });
     }
 
-    console.log("Razorpay webhook received:", eventName);
+    console.log(
+      "Razorpay webhook received:",
+      eventName
+    );
 
     const subscription =
       event.payload?.subscription?.entity;
 
-    const razorpaySubscriptionId = subscription?.id;
+    const razorpaySubscriptionId =
+      subscription?.id;
 
     if (!razorpaySubscriptionId) {
       await prisma.razorpayWebhookEvent.create({
@@ -125,7 +141,9 @@ export async function POST(request: Request) {
         },
       });
 
-      return NextResponse.json({ received: true });
+      return NextResponse.json({
+        received: true,
+      });
     }
 
     const existingSubscription =
@@ -148,7 +166,9 @@ export async function POST(request: Request) {
         },
       });
 
-      return NextResponse.json({ received: true });
+      return NextResponse.json({
+        received: true,
+      });
     }
 
     const currentPeriodStart =
@@ -156,6 +176,22 @@ export async function POST(request: Request) {
 
     const currentPeriodEnd =
       unixToDate(subscription.current_end);
+
+    /*
+     * Resolve the Nexora plan from Razorpay's plan ID.
+     *
+     * Checkout no longer grants PRO/TEAM immediately.
+     * The paid plan is applied only after Razorpay
+     * confirms activation through the webhook.
+     */
+    const razorpayPlanId =
+      subscription.plan_id;
+
+    const resolvedPlan = razorpayPlanId
+      ? getPlanFromRazorpayPlanId(
+          razorpayPlanId
+        )
+      : null;
 
     switch (eventName) {
       case "subscription.activated":
@@ -165,6 +201,11 @@ export async function POST(request: Request) {
             id: existingSubscription.id,
           },
           data: {
+            ...(resolvedPlan
+              ? {
+                  plan: resolvedPlan,
+                }
+              : {}),
             status: "ACTIVE",
             razorpayCustomerId:
               subscription.customer_id ??
@@ -235,7 +276,9 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ received: true });
+    return NextResponse.json({
+      received: true,
+    });
   } catch (error) {
     console.error(
       "Razorpay webhook processing error:",
@@ -243,8 +286,12 @@ export async function POST(request: Request) {
     );
 
     return NextResponse.json(
-      { error: "Webhook processing failed" },
-      { status: 500 }
+      {
+        error: "Webhook processing failed",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
