@@ -26,7 +26,7 @@ export async function getCurrentMembership() {
     return null;
   }
 
-  let activeOrganizationId = user.activeOrganizationId;
+  const activeOrganizationId = user.activeOrganizationId;
 
   // If the user doesn't have an active organization yet,
   // select their first membership and persist it.

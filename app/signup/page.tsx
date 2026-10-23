@@ -101,7 +101,7 @@ export default function SignupPage() {
             marginBottom: "30px",
           }}
         >
-          Start your workspace and invite your team when you're ready.
+          Start your workspace and invite your team when you&apos;re ready.
         </p>
 
         <form onSubmit={handleSubmit}>

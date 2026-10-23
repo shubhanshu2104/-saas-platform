@@ -99,7 +99,7 @@ export default async function InvitationPage({
         </div>
 
         <div className="invite-eyebrow">
-          YOU'VE BEEN INVITED
+          YOU&apos;VE BEEN INVITED
         </div>
 
         <h1>
@@ -150,7 +150,7 @@ export default async function InvitationPage({
               <strong>Wrong account</strong>
               <p>
                 This invitation was sent to{" "}
-                {invitation.email}. You're currently
+                {invitation.email}. You&apos;re currently
                 logged in with {session?.user?.email}.
               </p>
 

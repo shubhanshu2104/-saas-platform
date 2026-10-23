@@ -174,7 +174,7 @@ router.refresh();
             </form>
 
             <p className="mt-8 text-center text-sm text-black/45">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <a
                 href="/signup"
                 className="font-medium text-black underline underline-offset-4"
