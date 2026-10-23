@@ -1,7 +1,9 @@
+import type { Subscriptions } from "razorpay/dist/types/subscriptions";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { razorpay } from "@/lib/razorpay";
 import { getPlanFromRazorpayPlanId } from "@/lib/razorpay-plans";
 
 type RazorpayWebhook = {
@@ -11,50 +13,56 @@ type RazorpayWebhook = {
     subscription?: {
       entity?: {
         id?: string;
-        customer_id?: string;
-        plan_id?: string;
-        current_start?: number;
-        current_end?: number;
-        status?: string;
       };
     };
   };
 };
 
-function unixToDate(value?: number) {
-  if (!value) {
-    return undefined;
-  }
+const SUBSCRIPTION_EVENTS = new Set([
+  "subscription.created",
+  "subscription.authenticated",
+  "subscription.activated",
+  "subscription.charged",
+  "subscription.pending",
+  "subscription.halted",
+  "subscription.cancelled",
+  "subscription.completed",
+  "subscription.expired",
+]);
 
+function unixToDate(value?: number | null): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === 0) return null;
   return new Date(value * 1000);
 }
 
+function getErrorCode(error: unknown): unknown {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    return error.code;
+  }
+  return undefined;
+}
+
 export async function POST(request: Request) {
+  let receivedEventId: string | undefined;
+
   try {
     const body = await request.text();
-
-    const signature = request.headers.get(
-      "x-razorpay-signature"
-    );
+    const signature = request.headers.get("x-razorpay-signature");
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!signature) {
       return NextResponse.json(
         { error: "Missing webhook signature" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const webhookSecret =
-      process.env.RAZORPAY_WEBHOOK_SECRET;
-
     if (!webhookSecret) {
-      console.error(
-        "RAZORPAY_WEBHOOK_SECRET is missing"
-      );
-
+      console.error("Razorpay webhook secret is missing");
       return NextResponse.json(
         { error: "Webhook configuration missing" },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -63,23 +71,16 @@ export async function POST(request: Request) {
       .update(body)
       .digest("hex");
 
-    const signatureBuffer = Buffer.from(signature);
-    const expectedSignatureBuffer = Buffer.from(
-      expectedSignature
-    );
+    const signatureBuffer = Buffer.from(signature, "utf8");
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
 
-    const signaturesMatch =
-      signatureBuffer.length ===
-        expectedSignatureBuffer.length &&
-      crypto.timingSafeEqual(
-        signatureBuffer,
-        expectedSignatureBuffer
-      );
-
-    if (!signaturesMatch) {
+    if (
+      signatureBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+    ) {
       return NextResponse.json(
         { error: "Invalid webhook signature" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -90,208 +91,174 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         { error: "Invalid webhook payload" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const eventId = event.id;
     const eventName = event.event;
+    receivedEventId = eventId;
 
     if (!eventId || !eventName) {
       return NextResponse.json(
         { error: "Invalid webhook event" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const existingEvent =
-      await prisma.razorpayWebhookEvent.findUnique({
-        where: {
-          eventId,
-        },
-      });
+    // Avoid unnecessary Razorpay API calls for already processed events.
+    const alreadyProcessed = await prisma.razorpayWebhookEvent.findUnique({
+      where: { eventId },
+      select: { id: true },
+    });
 
-    if (existingEvent) {
-      console.log(
-        "Razorpay webhook already processed:",
-        eventId
-      );
-
-      return NextResponse.json({
-        received: true,
-      });
+    if (alreadyProcessed) {
+      return NextResponse.json({ received: true });
     }
-
-    console.log(
-      "Razorpay webhook received:",
-      eventName
-    );
-
-    const subscription =
-      event.payload?.subscription?.entity;
 
     const razorpaySubscriptionId =
-      subscription?.id;
+      event.payload?.subscription?.entity?.id;
 
-    if (!razorpaySubscriptionId) {
-      await prisma.razorpayWebhookEvent.create({
-        data: {
-          eventId,
-          eventType: eventName,
-        },
-      });
-
-      return NextResponse.json({
-        received: true,
-      });
+    let latest: Subscriptions.RazorpaySubscription | null = null;
+    if (SUBSCRIPTION_EVENTS.has(eventName) && razorpaySubscriptionId) {
+      // Use Razorpay's current state rather than trusting an old event's state.
+      latest = await razorpay.subscriptions.fetch(razorpaySubscriptionId);
     }
 
-    const existingSubscription =
-      await prisma.subscription.findFirst({
-        where: {
-          razorpaySubscriptionId,
-        },
+    await prisma.$transaction(async (tx) => {
+      await tx.razorpayWebhookEvent.create({
+        data: { eventId, eventType: eventName },
       });
 
-    if (!existingSubscription) {
-      console.warn(
-        "Nexora subscription not found:",
-        razorpaySubscriptionId
-      );
+      // Valid events unrelated to a subscription require no subscription update.
+      if (!SUBSCRIPTION_EVENTS.has(eventName) || !razorpaySubscriptionId) {
+        return;
+      }
 
-      await prisma.razorpayWebhookEvent.create({
-        data: {
-          eventId,
-          eventType: eventName,
-        },
+      const existing = await tx.subscription.findFirst({
+        where: { razorpaySubscriptionId },
       });
 
-      return NextResponse.json({
-        received: true,
-      });
-    }
+      if (!existing) {
+        throw new Error("NEXORA_SUBSCRIPTION_NOT_FOUND");
+      }
 
-    const currentPeriodStart =
-      unixToDate(subscription.current_start);
+      if (!latest) {
+        throw new Error("NEXORA_SUBSCRIPTION_STATE_MISSING");
+      }
 
-    const currentPeriodEnd =
-      unixToDate(subscription.current_end);
+      const customerId =
+        latest.customer_id ?? existing.razorpayCustomerId;
 
-    /*
-     * Resolve the Nexora plan from Razorpay's plan ID.
-     *
-     * Checkout no longer grants PRO/TEAM immediately.
-     * The paid plan is applied only after Razorpay
-     * confirms activation through the webhook.
-     */
-    const razorpayPlanId =
-      subscription.plan_id;
+      const currentPeriodStart = unixToDate(latest.current_start);
+      const currentPeriodEnd = unixToDate(latest.current_end);
 
-    const resolvedPlan = razorpayPlanId
-      ? getPlanFromRazorpayPlanId(
-          razorpayPlanId
-        )
-      : null;
+      const commonData = {
+        razorpayCustomerId: customerId,
+        currentPeriodStart,
+        currentPeriodEnd,
+      };
 
-    switch (eventName) {
-      case "subscription.activated":
-      case "subscription.charged":
-        await prisma.subscription.update({
-          where: {
-            id: existingSubscription.id,
-          },
-          data: {
-            ...(resolvedPlan
-              ? {
-                  plan: resolvedPlan,
-                }
-              : {}),
-            status: "ACTIVE",
-            razorpayCustomerId:
-              subscription.customer_id ??
-              existingSubscription.razorpayCustomerId,
-            currentPeriodStart,
-            currentPeriodEnd,
-          },
-        });
-        break;
+      switch (latest.status) {
+        case "active": {
+          const resolvedPlan = getPlanFromRazorpayPlanId(latest.plan_id);
 
-      case "subscription.pending":
-      case "subscription.halted":
-        await prisma.subscription.update({
-          where: {
-            id: existingSubscription.id,
-          },
-          data: {
-            status: "PAST_DUE",
-            razorpayCustomerId:
-              subscription.customer_id ??
-              existingSubscription.razorpayCustomerId,
-            currentPeriodStart,
-            currentPeriodEnd,
-          },
-        });
-        break;
+          if (!resolvedPlan || resolvedPlan === "FREE") {
+            throw new Error("UNMAPPED_RAZORPAY_PLAN");
+          }
 
-      case "subscription.cancelled":
-        await prisma.subscription.update({
-          where: {
-            id: existingSubscription.id,
-          },
-          data: {
-            status: "CANCELLED",
-            razorpayCustomerId:
-              subscription.customer_id ??
-              existingSubscription.razorpayCustomerId,
-          },
-        });
-        break;
+          await tx.subscription.update({
+            where: { id: existing.id },
+            data: {
+              ...commonData,
+              plan: resolvedPlan,
+              status: "ACTIVE",
+            },
+          });
+          break;
+        }
 
-      case "subscription.completed":
-      case "subscription.expired":
-        await prisma.subscription.update({
-          where: {
-            id: existingSubscription.id,
-          },
-          data: {
-            status: "EXPIRED",
-            razorpayCustomerId:
-              subscription.customer_id ??
-              existingSubscription.razorpayCustomerId,
-          },
-        });
-        break;
+        case "pending":
+        case "halted":
+        case "created":
+        case "authenticated":
+          await tx.subscription.update({
+            where: { id: existing.id },
+            data: {
+              ...commonData,
+              status: "PAST_DUE",
+            },
+          });
+          break;
 
-      default:
-        console.log(
-          "Unhandled Razorpay webhook event:",
-          eventName
-        );
-    }
+        case "cancelled":
+          await tx.subscription.update({
+            where: { id: existing.id },
+            data: {
+              razorpayCustomerId: customerId,
+              status: "CANCELLED",
+            },
+          });
+          break;
 
-    await prisma.razorpayWebhookEvent.create({
-      data: {
-        eventId,
-        eventType: eventName,
-      },
+        case "completed":
+        case "expired":
+          await tx.subscription.update({
+            where: { id: existing.id },
+            data: {
+              razorpayCustomerId: customerId,
+              status: "EXPIRED",
+            },
+          });
+          break;
+
+        default:
+          throw new Error("UNKNOWN_RAZORPAY_SUBSCRIPTION_STATUS");
+      }
     });
 
-    return NextResponse.json({
-      received: true,
-    });
+    return NextResponse.json({ received: true });
   } catch (error) {
-    console.error(
-      "Razorpay webhook processing error:",
-      error
-    );
+    const errorCode = getErrorCode(error);
+
+    // Only acknowledge P2002 as a duplicate if this event ID exists.
+    if (errorCode === "P2002" && receivedEventId) {
+      const duplicate = await prisma.razorpayWebhookEvent.findUnique({
+        where: { eventId: receivedEventId },
+        select: { id: true },
+      });
+
+      if (duplicate) {
+        return NextResponse.json({ received: true });
+      }
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "NEXORA_SUBSCRIPTION_NOT_FOUND"
+    ) {
+      return NextResponse.json(
+        { error: "Subscription not found; retry later" },
+        { status: 500 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "UNMAPPED_RAZORPAY_PLAN"
+    ) {
+      console.error("Unknown Razorpay plan; paid access was not granted.");
+      return NextResponse.json(
+        { error: "Unknown Razorpay plan; check plan configuration" },
+        { status: 500 },
+      );
+    }
+
+    console.error("Razorpay webhook processing failed:", error);
 
     return NextResponse.json(
-      {
-        error: "Webhook processing failed",
-      },
-      {
-        status: 500,
-      }
+      { error: "Webhook processing failed" },
+      { status: 500 },
     );
   }
 }
