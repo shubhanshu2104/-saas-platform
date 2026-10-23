@@ -1,7 +1,6 @@
+import { verifyRazorpayWebhookSignature } from "@/lib/razorpay-webhook-signature";
 import type { Subscriptions } from "razorpay/dist/types/subscriptions";
-import crypto from "crypto";
 import { NextResponse } from "next/server";
-
 import { prisma } from "@/lib/prisma";
 import { razorpay } from "@/lib/razorpay";
 import { getPlanFromRazorpayPlanId } from "@/lib/razorpay-plans";
@@ -66,23 +65,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", webhookSecret)
-      .update(body)
-      .digest("hex");
-
-    const signatureBuffer = Buffer.from(signature, "utf8");
-    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
-
-    if (
-      signatureBuffer.length !== expectedBuffer.length ||
-      !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
-    ) {
-      return NextResponse.json(
-        { error: "Invalid webhook signature" },
-        { status: 400 },
-      );
-    }
+   if (!verifyRazorpayWebhookSignature(body, signature, webhookSecret)) {
+  return NextResponse.json(
+    { error: "Invalid webhook signature" },
+    { status: 400 },
+  );
+}
 
     let event: RazorpayWebhook;
 
