@@ -2,6 +2,7 @@ import { getCurrentSubscription } from "@/lib/subscription";
 import { getCurrentMembership } from "@/lib/tenant";
 import { getCurrentUsage } from "@/lib/usage";
 import { redirect } from "next/navigation";
+import CancelSubscriptionButton from "@/components/billing/CancelSubscriptionButton";
 
 export default async function BillingPage() {
   const membership = await getCurrentMembership();
@@ -60,6 +61,50 @@ export default async function BillingPage() {
               <p className="text-xs font-semibold tracking-[0.15em] text-black/40">
                 CURRENT PLAN
               </p>
+              
+<section className="border-b border-black/10 py-8">
+  <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
+    <div>
+      <p className="text-xs font-semibold tracking-[0.15em] text-black/40">
+        SUBSCRIPTION MANAGEMENT
+      </p>
+
+      {subscription.plan !== "FREE" &&
+      subscription.currentPeriodEnd ? (
+        <p className="mt-3 text-sm text-black/70">
+          Current period ends{" "}
+          {subscription.currentPeriodEnd.toLocaleDateString(
+            "en-IN",
+            {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }
+          )}
+        </p>
+      ) : (
+        <p className="mt-3 text-sm text-black/50">
+          You are currently on the Free plan.
+        </p>
+      )}
+
+      {subscription.cancelAtPeriodEnd && (
+        <p className="mt-3 text-sm font-medium text-amber-800">
+          Cancellation is scheduled. Check the period end date
+          and provider status to confirm when access ends.
+        </p>
+      )}
+    </div>
+
+    {membership.role !== "MEMBER" &&
+      subscription.plan !== "FREE" &&
+      subscription.status === "ACTIVE" &&
+      !subscription.cancelAtPeriodEnd && (
+        <CancelSubscriptionButton />
+      )}
+  </div>
+</section>
+
 
               <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">
                 {config.name}

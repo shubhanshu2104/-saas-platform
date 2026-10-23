@@ -1,4 +1,4 @@
-
+import { getEffectivePlan } from "@/lib/subscription";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSubscription } from "@/lib/subscription";
@@ -168,7 +168,7 @@ export async function recordOrganizationUsage(
 
           const used = currentUsage._sum.units ?? 0;
 
-          const effectivePlan =
+          const effectivePlan = getEffectivePlan(subscription);
             subscription.status === "CANCELLED" ||
             subscription.status === "EXPIRED" ||
             subscription.status === "PAST_DUE"

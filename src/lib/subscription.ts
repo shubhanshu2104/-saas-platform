@@ -1,6 +1,40 @@
+
 import { PLAN_CONFIG } from "./plans";
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembership } from "@/lib/tenant";
+import type { Plan, SubscriptionStatus } from "@/generated/prisma/client";
+
+type SubscriptionAccessState = {
+  plan: Plan;
+  status: SubscriptionStatus;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: Date | null;
+};
+
+export function getEffectivePlan(
+  subscription: SubscriptionAccessState,
+  now: Date = new Date()
+): Plan {
+  const paidPeriodStillValid =
+    subscription.plan !== "FREE" &&
+    subscription.cancelAtPeriodEnd &&
+    subscription.currentPeriodEnd !== null &&
+    subscription.currentPeriodEnd.getTime() > now.getTime();
+
+  if (subscription.status === "CANCELLED" && paidPeriodStillValid) {
+    return subscription.plan;
+  }
+
+  if (
+    subscription.status === "CANCELLED" ||
+    subscription.status === "EXPIRED" ||
+    subscription.status === "PAST_DUE"
+  ) {
+    return "FREE";
+  }
+
+  return subscription.plan;
+}
 
 export async function getCurrentSubscription() {
   const membership = await getCurrentMembership();
@@ -15,7 +49,6 @@ export async function getCurrentSubscription() {
     },
   });
 
-  // Every organization should start on the FREE plan.
   if (!subscription) {
     subscription = await prisma.subscription.create({
       data: {
@@ -25,12 +58,8 @@ export async function getCurrentSubscription() {
       },
     });
   }
-const effectivePlan =
-  subscription.status === "CANCELLED" ||
-  subscription.status === "EXPIRED" ||
-  subscription.status === "PAST_DUE"
-    ? "FREE"
-    : subscription.plan;
+
+  const effectivePlan = getEffectivePlan(subscription);
 
   return {
     ...subscription,
