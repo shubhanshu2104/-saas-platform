@@ -1,3 +1,4 @@
+
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSubscription } from "@/lib/subscription";
@@ -124,6 +125,7 @@ export async function recordUsage(units = 1) {
     remaining: limit - (used + units),
   };
 }
+
 export async function recordOrganizationUsage(
   organizationId: string,
   units = 1
@@ -166,15 +168,16 @@ export async function recordOrganizationUsage(
 
           const used = currentUsage._sum.units ?? 0;
 
-         const effectivePlan =
-  subscription.status === "CANCELLED" ||
-  subscription.status === "EXPIRED"
-    ? "FREE"
-    : subscription.plan;
+          const effectivePlan =
+            subscription.status === "CANCELLED" ||
+            subscription.status === "EXPIRED" ||
+            subscription.status === "PAST_DUE"
+              ? "FREE"
+              : subscription.plan;
 
-const limit =
-  PLAN_CONFIG[effectivePlan]
-    .monthlyUsageLimit;
+          const limit =
+            PLAN_CONFIG[effectivePlan].monthlyUsageLimit;
+
           if (used + units > limit) {
             throw new Error(
               `Monthly usage limit of ${limit} units exceeded.`

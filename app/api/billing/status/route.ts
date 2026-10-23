@@ -10,11 +10,11 @@ export async function GET() {
       { status: 401 }
     );
   }
-
-  return NextResponse.json({
-    plan: subscription.plan,
-    status: subscription.status,
-    currentPeriodStart: subscription.currentPeriodStart,
-    currentPeriodEnd: subscription.currentPeriodEnd,
-  });
+return NextResponse.json({
+  plan: subscription.effectivePlan,
+  storedPlan: subscription.plan,
+  status: subscription.status,
+  currentPeriodStart: subscription.currentPeriodStart,
+  currentPeriodEnd: subscription.currentPeriodEnd,
+});
 }
