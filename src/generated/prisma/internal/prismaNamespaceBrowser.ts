@@ -135,6 +135,7 @@ export const SubscriptionScalarFieldEnum = {
   razorpaySubscriptionId: 'razorpaySubscriptionId',
   currentPeriodStart: 'currentPeriodStart',
   currentPeriodEnd: 'currentPeriodEnd',
+  cancelAtPeriodEnd: 'cancelAtPeriodEnd',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
